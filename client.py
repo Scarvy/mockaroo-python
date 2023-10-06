@@ -1,72 +1,136 @@
 import os
+from typing import Any, Dict, List, Optional, Union
+from urllib.parse import urlencode
 
 import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = "https://api.mockaroo.com"
 TYPE_ENDPOINT = "/api/types/"
-UPLOAD_DATASET_ENDPOINT = "/api/datasets/"
-GENERATE_DATASET_ENDPOINT = "/api/generate"
+UPLOAD_ENDPOINT = "/api/datasets/"
+GENERATE_ENDPOINT = "/api/generate"
 
-# TODO fix generate dataset from schema func not returning anything
-
-
-def _get_mockaroo(url: str) -> dict:
-    resp = requests.get(url)
-    resp.raise_for_status()
-    return resp.json()
+# TODO handle different data output
 
 
-def get_api_key():
-    try:
-        return os.environ["API_KEY"]
-    except:
-        raise KeyError("API Key does not exist.")
+class MockarooError(Exception):
+    pass
 
 
-def get_types(api_key: str) -> dict:
-    return _get_mockaroo(f"{BASE_URL}{TYPE_ENDPOINT}?key={api_key}")
+class ApiKeyNotFound(MockarooError):
+    def __init__(self):
+        self.msg = "API key is required. Export API_KEY=mockaroo_api_key"
+
+    def __call__(self):
+        print(self.msg)
 
 
-def upload_dataset(api_key: str, name: str, path: str) -> dict:
-    url = f"{BASE_URL}{UPLOAD_DATASET_ENDPOINT}{name}?key={api_key}"
-    with open(path, "rb") as f:
-        files = {"file": f}
-        resp = requests.post(url, files=files, headers={"content-type": "text/csv"})
-    return resp.json()
+class InvalidApiKeyError(MockarooError):
+    pass
 
 
-def delete_dataset(api_key: str, name: str):
-    url = f"{BASE_URL}{UPLOAD_DATASET_ENDPOINT}{name}?key={api_key}"
-    resp = requests.delete(url)
-    return resp.json()
+class UsageLimitExceededError(MockarooError):
+    pass
 
 
-def generate_dataset_from_schema(
-    api_key: str,
-    dataset_format: str,
-    schema_name: str,
-):
-    # url = f"{BASE_URL}{GENERATE_DATASET_ENDPOINT}.{dataset_format}?key={api_key}"
-    # resp = requests.post(url, params={"schema": schema_name})
-    # return resp
-    ...
+class Client:
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        host: str = "api.mockaroo.com",
+        secure: bool = True,
+        port: Optional[int] = None,
+    ) -> None:
+        if not api_key:
+            self.api_key = os.environ["API_KEY"]
+        else:
+            raise ApiKeyNotFound()
+        self.host: str = host
+        self.secure: bool = secure
+        self.port: Optional[int] = port
 
+    def _convert_error(self, response_data: Dict[str, Any]) -> None:
+        error = response_data.get("error")
+        if error == "Invalid API Key":
+            raise InvalidApiKeyError()
+        elif "limited" in error:
+            raise UsageLimitExceededError()
+        else:
+            raise MockarooError(error)
 
-if __name__ == "__main__":
-    api_key = get_api_key()
+    def _validate_fields(self, fields: Optional[List[Dict[str, Any]]]) -> None:
+        if not fields:
+            return
+        if not all("name" in field and "type" in field for field in fields):
+            raise ValueError("Each field must have a 'name' and 'type'")
 
-    types = get_types(api_key=api_key)
-    print(types)
+    def _get_url(
+        self,
+        count: int,
+        fmt: str,
+        schema: Optional[str] = None,
+        header: Optional[bool] = None,
+        array: Optional[bool] = None,
+    ) -> str:
+        base_url: str = f"{'https' if self.secure else 'http'}://{self.host}"
+        if self.port:
+            base_url += f":{self.port}"
 
-    result = upload_dataset(api_key=api_key, name="test_dataset", path="test.csv")
-    print(result)
+        params: Dict[str, Union[str, int, bool]] = {
+            "client": "python",
+            "key": self.api_key,
+            "count": count,
+            "format": fmt,
+        }
+        if schema:
+            params["schema"] = schema
+        if header:
+            params["header"] = header
+        if array:
+            params["array"] = array
 
-    result = delete_dataset(api_key=api_key, name="test_dataset")
-    print(result)
+        return f"{base_url}/api/generate.{fmt}?{urlencode(params)}"
 
-    # result = generate_dataset_from_schema(
-    #     api_key=api_key, dataset_format="csv", schema_name="Person"
-    # )
+    def types(self) -> dict:
+        url = f"https://{self.host}{TYPE_ENDPOINT}?key={self.api_key}"
+        response = requests.get(url)
+        response.raise_for_status()
+
+        if response.status_code != 200:
+            self._convert_error(response.json())
+
+        return response.json()
+
+    def upload(self, name: str, path: str) -> dict:
+        url = f"https://{self.host}{UPLOAD_ENDPOINT}{name}?key={self.api_key}"
+        with open(path, "rb") as f:
+            files = {"file": f}
+            resp = requests.post(url, files=files, headers={"content-type": "text/csv"})
+        return resp.json()
+
+    def delete(self, name: str):
+        url = f"https://{self.host}{UPLOAD_ENDPOINT}{name}?key={self.api_key}"
+        resp = requests.delete(url)
+        return resp.json()
+
+    def generate(
+        self,
+        count: int = 1,
+        fmt: str = "json",
+        schema: Optional[str] = None,
+        header: bool = True,
+        array: bool = False,
+        fields: Optional[List[Dict[str, Any]]] = None,
+    ) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+        self._validate_fields(fields)
+        url = self._get_url(count, fmt, schema, header, array)
+        response = requests.post(url, json=fields)
+        response.raise_for_status()
+
+        if response.status_code != 200:
+            self._convert_error(response.json())
+
+        if fmt == "json":
+            return response.json()
+        return response
