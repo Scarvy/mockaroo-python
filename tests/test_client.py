@@ -1,5 +1,6 @@
 import pytest
 
+import os
 from pathlib import Path
 from unittest.mock import patch, Mock
 from mockaroo.client import (
@@ -15,8 +16,10 @@ def test_init():
 
 
 def test_no_api_key():
-    with pytest.raises(ApiKeyNotFound):
-        Client(api_key="some_key")
+    with patch("os.environ.get") as mock_env_get:
+        mock_env_get.return_value = None
+        with pytest.raises(ApiKeyNotFound):
+            Client(api_key=None)
 
 
 @patch("requests.get")
