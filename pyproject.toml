@@ -7,8 +7,34 @@ name = "mockaroo-python"
 authors = [{name = "Scott Carvalho", email = "scottcarvalho71@gmail.com"}]
 readme = "README.md"
 license = {file = "LICENSE"}
-classifiers = ["License :: OSI Approved :: MIT License"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+    ]
 dynamic = ["version", "description"]
+keywords = ["api", "mock-data", "python"]
+
+dependencies = [
+    "requests",
+    "python-dotenv",
+]
+
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+test = [
+    "pre-commit",
+    "pytest",
+]
+dev = [
+    "black",
+    "mypy"
+]
 
 [project.urls]
 Home = "https://github.com/Scarvy/mockaroo-python"
