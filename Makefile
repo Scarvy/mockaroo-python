@@ -1,0 +1,9 @@
+.PHONY: test clean
+
+test:
+	pytest
+
+clean: 
+	rm -rf __pycache__ .pytest_cache .mypy_cache ./**/__pycache__
+	rm -f .coverage coverage.xml ./**/*.pyc
+	rm -rf .tox
