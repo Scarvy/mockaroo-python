@@ -179,17 +179,15 @@ class Client:
     ) -> Union[Dict[str, Any], List[Dict[str, Any]], ByteString]:
         """Generate mock data using the Mockaroo API.
 
-        Args:
-            count (int, optional): Number of records to generate. Defaults to 1.
-            fmt (str, optional): Output format of the generated data. Defaults to "json".
-
         Keyword Args:
             array (bool, optional): Control JSON output type based on 'count'. Defaults to false.
             bom (bool, optional): Include BOM when format is csv, txt, or custom. Defaults to false.
             background (bool, optional): Whether to generate data in the background. Defaults to false.
             callback (str, optional): Javascript function for JSONP response.
+            count (int, optional): Number of records to generate. Defaults to 1.
             delimiter (str, optional): Column separator when format is custom.
             fields (List[Dict[str, Any]], optional): Field specifications as JSON array.
+            fmt (str, optional): Output format of the generated data. Defaults to "json".
             include_nulls (bool, optional): Include keys with null values in JSON. Defaults to true.
             include_header (bool, optional): Include header row for CSV. Defaults to true.
             line_ending (str, optional): "unix" or "windows" when format is custom.
