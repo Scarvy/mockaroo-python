@@ -232,7 +232,7 @@ class Client:
             schema is not None and fields is not None
         ):
             warnings.warn(
-                "You should specify either 'schema' or 'fields', but not both. Schema will override any values passed to fields."
+                "You should specify either 'schema' or 'fields', but not both. `schema` will override any values passed to `fields`."
             )
 
         if fields:
