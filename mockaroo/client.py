@@ -1,17 +1,22 @@
 """Provides code to interact with the Mockaroo API"""
-
+import warnings
 import os
 from typing import Any, Dict, List, Optional, Union, ByteString
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 
 import requests
-from requests import Response
 from dotenv import load_dotenv
 
-from .constants import TYPE_ENDPOINT, UPLOAD_ENDPOINT, GENERATE_ENDPOINT
+from .constants import (
+    TYPE_ENDPOINT,
+    UPLOAD_ENDPOINT,
+    GENERATE_ENDPOINT,
+    HTTP_GET,
+    HTTP_POST,
+    HTTP_DELETE,
+)
 from .exceptions import (
     MockarooError,
-    ApiKeyNotFound,
     InvalidApiKeyError,
     UsageLimitExceededError,
 )
@@ -36,25 +41,30 @@ class Client:
         secure: bool = True,
         port: Optional[int] = None,
     ) -> None:
-        self.api_key = api_key if api_key else os.environ.get("API_KEY")
-        if not self.api_key:
-            raise ApiKeyNotFound()
+        self._api_key = api_key
         self.host: str = host
         self.secure: bool = secure
         self.port: Optional[int] = port
 
+    @property
+    def api_key(self):
+        if not self._api_key:
+            self._api_key = os.environ.get("API_KEY")
+            if not self._api_key:
+                warnings.warn(
+                    "API key is not provided. Set API_KEY `export API_KEY=your_api_key`."
+                )
+        return self._api_key
+
     def _convert_error(self, response_data: Dict[str, Any]) -> None:
         """Convert API errors into appropriate exceptions."""
-        error = response_data.get("error")
-        if error is None:
-            raise MockarooError("Unknown error")
-
-        if error == "Invalid API Key":
-            raise InvalidApiKeyError()
-        elif "limited" in error:
-            raise UsageLimitExceededError()
-        else:
-            raise MockarooError(error)
+        error = response_data.get("error", "Unknown error")
+        exception_mapping = {
+            "Invalid API Key": InvalidApiKeyError,
+            "Usage Limit Exceeded": UsageLimitExceededError,
+        }
+        exception_cls = exception_mapping.get(error, MockarooError)
+        raise exception_cls(error)
 
     def _validate_fields(self, fields: Optional[List[Dict[str, Any]]]) -> None:
         """Validate that each field has 'name' and 'type' keys.
@@ -72,111 +82,66 @@ class Client:
 
     def _get_url(
         self,
-        count: int,
-        fmt: str,
-        schema: Optional[str] = None,
-        header: Optional[bool] = None,
-        array: Optional[bool] = None,
+        endpoint: str,
+        **params,
     ) -> str:
         """Construct the API URL.
 
         Args:
-            count (int): Number of records to generate.
-            fmt (str): Format of the generated data (e.g., "json").
-            schema (Optional[str], optional): Predefined schema to use.
-            header (Optional[bool], optional): Whether to include header.
-            array (Optional[bool], optional): Whether the output should be an array.
+            endpoint (str): Mockaroo API endpoint to use.
+
+        Keyword Args:
+            count (int): Number of records to generate. Defaults to 1.
+            fmt (str): Format of the generated data. Defaults to "json".
+            schema (str): Predefined schema to use.
+            name (str): Name for the dataset to use.
+            header (str): Whether to include header.
+            array (str): Whether the output should be an array.
 
         Returns:
             str: Fully constructed URL for API request.
         """
-        base_url: str = f"{'https' if self.secure else 'http'}://{self.host}"
+        scheme = "https" if self.secure else "http"
+        base_url: str = f"{scheme}://{self.host}"
+
         if self.port:
             base_url += f":{self.port}"
 
-        params: Dict[str, Union[str, int, bool, None]] = {
-            "client": "python",
-            "key": self.api_key,
-            "count": count,
-            "format": fmt,
-        }
-        if schema:
-            params["schema"] = schema
-        if header:
-            params["header"] = header
-        if array:
-            params["array"] = array
+        params["client"] = "python"
+        params["key"] = self.api_key
+        params["count"] = params.get("count")
 
-        return f"{base_url}{GENERATE_ENDPOINT}.{fmt}?{urlencode(params)}"
+        # for generate requests. Add format type to URL.
+        fmt = params.pop("fmt", None)
+        if fmt:
+            endpoint = f"{endpoint}.{fmt}"  # Example: api/generate.json?
 
-    def _http_get(self, url: str) -> Response:
-        """Perform an HTTP GET request and handle errors.
+        # name of dataset to upload (POST) or DELETE.
+        name = params.pop("name", None)
+        if name:
+            endpoint = (
+                f"{endpoint}{quote(name)}"  # Example: api/upload/name%20of%20dataset?
+            )
 
-        Args:
-            url (str): The URL to send the GET request to.
+        return f"{base_url}{endpoint}?{urlencode(params)}"
 
-        Returns:
-            Response: `Response` object containing API reply.
-        """
-        response = requests.get(url)
+    def _http_request(self, method: str, url: str, **kwargs) -> requests.Response:
+        response = requests.request(method, url, **kwargs)
         response.raise_for_status()
-
         if response.status_code != 200:
             self._convert_error(response.json())
         return response
 
-    def _http_post(
-        self,
-        url: str,
-        json_data: Optional[List[Dict[str, Any]]] = None,
-        files: Optional[Dict] = None,
-        headers: Optional[Dict] = None,
-    ) -> Response:
-        """Perform an HTTP POST request and handle errors.
-
-        Args:
-            url (str): The URL to send the POST request to.
-            json_data (Optional[Dict], optional): JSON payload for the request.
-            files (Optional[Dict], optional): Files to upload.
-            headers (Optional[Dict], optional): HTTP headers for the request.
-
-        Returns:
-            Response: `Response` object containing API reply.
-        """
-        response = requests.post(url, json=json_data, files=files, headers=headers)
-        response.raise_for_status()
-
-        if response.status_code != 200:
-            self._convert_error(response.json())
-        return response
-
-    def _http_delete(self, url: str) -> Response:
-        """Perform an HTTP DELETE request and handle errors.
-
-        Args:
-            url (str): The URL to send the DELETE request to.
-
-        Returns:
-            Response: `Response` object containing API reply.
-        """
-        response = requests.delete(url)
-        response.raise_for_status()
-
-        if response.status_code != 200:
-            self._convert_error(response.json())
-        return response
-
-    def types(self) -> dict:
+    def types(self) -> Dict[str, Any]:
         """Retrieve the types supported by the Mockaroo API.
 
         Returns:
             dict: A dictionary containing types supported by Mockaroo API.
         """
-        url = f"https://{self.host}{TYPE_ENDPOINT}?key={self.api_key}"
-        resp = self._http_get(url=url)
-        return resp.json()
+        url = self._get_url(TYPE_ENDPOINT)
+        return self._http_request(HTTP_GET, url=url).json()
 
-    def upload(self, name: str, path: str) -> dict:
+    def upload(self, name: str, path: str) -> Dict[str, Any]:
         """Upload a dataset to Mockaroo.
 
         Args:
@@ -186,15 +151,17 @@ class Client:
         Returns:
             dict: Dictionary containing upload status and other metadata.
         """
-        url = f"https://{self.host}{UPLOAD_ENDPOINT}{name}?key={self.api_key}"
+        url = self._get_url(UPLOAD_ENDPOINT, name=name)
         with open(path, "rb") as f:
             files = {"file": f}
-            resp = self._http_post(
-                url=url, files=files, headers={"content-type": "text/csv"}
-            )
-        return resp.json()
+            return self._http_request(
+                HTTP_POST,
+                url=url,
+                files=files,
+                headers={"content-type": "text/csv"},
+            ).json()
 
-    def delete(self, name: str) -> dict:
+    def delete(self, name: str) -> Dict[str, Any]:
         """Delete a dataset from Mockaroo.
 
         Args:
@@ -203,39 +170,83 @@ class Client:
         Returns:
             dict: Dictionary containing delete status and other metadata.
         """
-        url = f"https://{self.host}{UPLOAD_ENDPOINT}{name}?key={self.api_key}"
-        resp = self._http_delete(url=url)
-        return resp.json()
+        url = self._get_url(UPLOAD_ENDPOINT, name=name)
+        return self._http_request(HTTP_DELETE, url=url).json()
 
     def generate(
         self,
-        count: int = 1,
-        fmt: str = "json",
-        schema: Optional[str] = None,
-        header: bool = True,
-        array: bool = False,
-        fields: Optional[List[Dict[str, Any]]] = None,
+        **kwargs,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]], ByteString]:
         """Generate mock data using the Mockaroo API.
 
         Args:
-            count (int, optional): Number of records to generate.
-            fmt (str, optional): Output format of the generated data.
-            schema (Optional[str], optional): Predefined schema to use.
-            header (bool, optional): Whether to include header.
-            array (bool, optional): Whether the output should be an array.
-            fields (Optional[List[Dict[str, Any]]], optional): List of dictionaries specifying the fields for data generation.
+            count (int, optional): Number of records to generate. Defaults to 1.
+            fmt (str, optional): Output format of the generated data. Defaults to "json".
+
+        Keyword Args:
+            array (bool, optional): Control JSON output type based on 'count'. Defaults to false.
+            bom (bool, optional): Include BOM when format is csv, txt, or custom. Defaults to false.
+            background (bool, optional): Whether to generate data in the background. Defaults to false.
+            callback (str, optional): Javascript function for JSONP response.
+            delimiter (str, optional): Column separator when format is custom.
+            fields (List[Dict[str, Any]], optional): Field specifications as JSON array.
+            include_nulls (bool, optional): Include keys with null values in JSON. Defaults to true.
+            include_header (bool, optional): Include header row for CSV. Defaults to true.
+            line_ending (str, optional): "unix" or "windows" when format is custom.
+            quote_char (str, optional): Character for enclosing values, used when format is custom.
+            record_element (str, optional): Element name for each record when format is XML.
+            root_element (str, optional): Root element name when format is XML.
+            schema (str, optional): Name of a saved schema to use.
 
         Returns:
             Union[Dict[str, Any], List[Dict[str, Any]], ByteString]: The generated mock data in the specified format.
+
+        Usage:
+            >>> from mockaroo import Client
+            >>> client = Client()
+            >>> data = client.generate(schema="Person") Default: count=1
+            >>> data
+            {'id': 1, 'first_name': 'Sidnee', 'last_name': 'Attow'}
+
+            >>> from mockaroo import Client
+            >>> client = Client()
+            >>> data = client.generate(
+                    count=2,
+                    fields=[
+                        {
+                            "name": "id",
+                            "type": "Row Number"
+                        },
+                        {
+                            "name":"transactionType",
+                            "type": "Custom List",
+                            "values": ["credit","debit"]
+                        }
+                    ]
+                )
+            >>> data
+            [{'id': 1, 'transactionType': 'credit'}, {'id': 2, 'transactionType': 'debit'}]
         """
-        self._validate_fields(fields)
-        url = self._get_url(count, fmt, schema, header, array)
+        schema = kwargs.get("schema")
+        fields = kwargs.get("fields")
 
-        response = self._http_post(url=url, json_data=fields)
-        response.raise_for_status()
+        if (schema is None and fields is None) or (
+            schema is not None and fields is not None
+        ):
+            warnings.warn(
+                "You should specify either 'schema' or 'fields', but not both. Schema will override any values passed to fields."
+            )
 
-        if response.status_code != 200:
-            self._convert_error(response.json())
+        if fields:
+            self._validate_fields(fields)
 
-        return response.json() if fmt == "json" else response.content
+        fields = kwargs.pop("fields", None)  # Remove fields from keyword args
+
+        url = self._get_url(GENERATE_ENDPOINT, **kwargs)
+        response = self._http_request(HTTP_POST, url=url, json=fields)
+
+        return (
+            response.json()
+            if kwargs.get("fields", "json") == "json"
+            else response.content
+        )
