@@ -4,6 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "mockaroo-python"
+description = "A Python Library for interacting with Mockaroo APIs 🐍 + 🦘"
 authors = [{name = "Scott Carvalho", email = "scottcarvalho71@gmail.com"}]
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -16,7 +17,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3 :: Only",
     ]
-dynamic = ["version", "description"]
+dynamic = ["version"]
 keywords = ["api", "mock-data", "python"]
 
 dependencies = [
