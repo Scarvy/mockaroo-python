@@ -4,7 +4,11 @@ A Python library for the [Mockaroo APIs](https://mockaroo.com/docs). Use this li
 
 ## Installation
 
-The package is not yet available via pip, but you can install it directly from the source code using pip. You have two options:
+**Install from PyPl**:
+
+```bash
+pip install mockaroo-python
+```
 
 **Install from the GitHub Repository**:
 
