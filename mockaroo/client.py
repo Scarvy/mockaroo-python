@@ -46,6 +46,8 @@ class Client:
         self.secure: bool = secure
         self.port: Optional[int] = port
 
+        self.last_request = None
+
     @property
     def api_key(self):
         if not self._api_key:
@@ -125,11 +127,22 @@ class Client:
         return f"{base_url}{endpoint}?{urlencode(params)}"
 
     def _http_request(self, method: str, url: str, **kwargs) -> requests.Response:
-        response = requests.request(method, url, **kwargs)
-        response.raise_for_status()
-        if response.status_code != 200:
-            self._convert_error(response.json())
-        return response
+        self.last_request = {
+            "method": method,
+            "url": url,
+            "request": kwargs,
+            "error": None,
+        }
+        try:
+            resp = requests.request(method, url, **kwargs)
+            self.last_request["response"] = resp.text
+        except Exception as e:
+            self.last_request["error"] = str(e)
+            raise
+
+        if resp.status_code != 200:
+            self._convert_error(resp.json())
+        return resp
 
     def types(self) -> Dict[str, Any]:
         """Retrieve the types supported by the Mockaroo API.
