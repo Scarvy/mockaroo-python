@@ -244,7 +244,5 @@ class Client:
         response = self._http_request(HTTP_POST, url=url, json=fields)
 
         return (
-            response.json()
-            if kwargs.get("fields", "json") == "json"
-            else response.content
+            response.json() if kwargs.get("fmt", "json") == "json" else response.content
         )
