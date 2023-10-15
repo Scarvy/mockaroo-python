@@ -47,6 +47,8 @@ from mockaroo import Client
 
 # Initialize the client with your API key
 client = Client(api_key="your_api_key_here")
+# Or set an enviornment variable. `export API_KEY=your_api_key_here`
+client = Client()
 
 # Fetch available types from Mockaroo
 types = client.types()
