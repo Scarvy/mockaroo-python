@@ -109,7 +109,6 @@ class Client:
 
         params["client"] = "python"
         params["key"] = self.api_key
-        params["count"] = params.get("count")
 
         # for generate requests. Add format type to URL.
         fmt = params.pop("fmt", None)
