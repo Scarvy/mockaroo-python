@@ -1,4 +1,4 @@
-"""Provides code to interact with the Mockaroo API"""
+"""Provides code to interact with the Mockaroo API."""
 import warnings
 import os
 from typing import Any, Dict, List, Optional, Union, ByteString
@@ -31,9 +31,9 @@ class Client:
         api_key (Optional[str]): API key for Mockaroo API.
         host (str): Hostname of the API. Default: api.mockaroo.com
         secure (bool): Whether to use HTTPS. Default: True
-        port (Optional[int]): Port number to connect to. Default: None
-    """
+        port (Optional[int]): Port number to connect to. Default: None.
 
+    """
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -41,25 +41,42 @@ class Client:
         secure: bool = True,
         port: Optional[int] = None,
     ) -> None:
+        """Initializes the instance based on predefined arguments.
+
+        Args:
+            api_key (Optional[str], optional): API key for Mockaroo API.
+            host (str): Hostname of the API. Default: api.mockaroo.com
+            secure (bool): Whether to use HTTPS. Default: True
+            port (Optional[int], optional): Port number to connect to. Default: None.
+        """
         self._api_key = api_key
         self.host: str = host
         self.secure: bool = secure
         self.port: Optional[int] = port
 
-        self.last_request = None
+        self.last_request: Optional[Dict[str, Any]] = None
 
     @property
     def api_key(self):
+        """Set API key."""
         if not self._api_key:
             self._api_key = os.environ.get("API_KEY")
             if not self._api_key:
                 warnings.warn(
-                    "API key is not provided. Set API_KEY `export API_KEY=your_api_key`."
+                    "API key is not provided. " \
+                    "Set API_KEY `export API_KEY=your_api_key`."
                 )
         return self._api_key
 
     def _convert_error(self, response_data: Dict[str, Any]) -> None:
-        """Convert API errors into appropriate exceptions."""
+        """Convert API errors into appropriate exceptions.
+
+        Args:
+            response_data (Dict[str, Any]): A request response error message.
+
+        Raises:
+            exception_cls: A Mockaroo exception.
+        """
         error = response_data.get("error", "Unknown error")
         exception_mapping = {
             "Invalid API Key": InvalidApiKeyError,
@@ -68,21 +85,20 @@ class Client:
         exception_cls = exception_mapping.get(error, MockarooError)
         raise exception_cls(error)
 
-    def _validate_fields(self, fields: Optional[List[Dict[str, Any]]]) -> None:
+    def _validate_fields(self, fields: List[Dict[str, Any]]) -> None:
         """Validate that each field has 'name' and 'type' keys.
 
         Args:
-            fields (Optional[List[Dict[str, Any]]]): A list of dictionaries representing the fields for data generation. Each dictionary must have a 'name' and 'type'.
+            fields (List[Dict[str, Any]]): 
+            A list of dictionaries representing the fields for data generation.
 
         Raises:
-            ValueError: Raised if any dictionary in the fields list lacks a 'name' or 'type' key.
+            ValueError: If any dictionary lacks a 'name' or 'type' key.
         """
-        if not fields:
-            return
         if not all("name" in field and "type" in field for field in fields):
             raise ValueError("Each field must have a 'name' and 'type'")
 
-    def _get_url(
+    def _get_url( # noqa: D417
         self,
         endpoint: str,
         **params,
@@ -144,14 +160,15 @@ class Client:
             self._convert_error(resp.json())
         return resp
 
-    def types(self) -> Dict[str, Any]:
+    def types(self) -> List[Dict[str, Any]]:
         """Retrieve the types supported by the Mockaroo API.
 
         Returns:
-            dict: A dictionary containing types supported by Mockaroo API.
+            dict: A list of dictionaries containing types supported by Mockaroo.
         """
         url = self._get_url(TYPE_ENDPOINT)
-        return self._http_request(HTTP_GET, url=url).json()
+        json_resp = self._http_request(HTTP_GET, url=url).json()
+        return json_resp["types"]
 
     def upload(self, name: str, path: str) -> Dict[str, Any]:
         """Upload a dataset to Mockaroo.
@@ -185,13 +202,13 @@ class Client:
         url = self._get_url(UPLOAD_ENDPOINT, name=name)
         return self._http_request(HTTP_DELETE, url=url).json()
 
-    def generate(
+    def generate(  # noqa: D417
         self,
         **kwargs,
     ) -> Union[Dict[str, Any], List[Dict[str, Any]], ByteString]:
         """Generate mock data using the Mockaroo API.
 
-        Keyword Args:
+        Args:
             array (bool, optional): Control JSON output type based on 'count'. Defaults to false.
             bom (bool, optional): Include BOM when format is csv, txt, or custom. Defaults to false.
             background (bool, optional): Whether to generate data in the background. Defaults to false.
@@ -235,8 +252,11 @@ class Client:
                     ]
                 )
             >>> data
-            [{'id': 1, 'transactionType': 'credit'}, {'id': 2, 'transactionType': 'debit'}]
-        """
+            [
+                {'id': 1, 'transactionType': 'credit'}, 
+                {'id': 2, 'transactionType': 'debit'}
+            ]
+        """ # noqa: E501
         schema = kwargs.get("schema")
         fields = kwargs.get("fields")
 
@@ -244,7 +264,9 @@ class Client:
             schema is not None and fields is not None
         ):
             warnings.warn(
-                "You should specify either 'schema' or 'fields', but not both. `schema` will override any values passed to `fields`."
+                "You should specify either 'schema' or 'fields', "\
+                "but not both. `schema` will override any values passed"\
+                "to `fields`."
             )
 
         if fields:

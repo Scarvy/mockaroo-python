@@ -1,27 +1,29 @@
-"""Unit tests for the mockaroo package."""
+# ruff: noqa: D103
+"""Unit tests for the mockaroo api module."""
 import pytest
 import os
 import warnings
 
 from unittest.mock import patch, Mock
 
-from mockaroo import Client, InvalidApiKeyError, UsageLimitExceededError
-from mockaroo.constants import GENERATE_ENDPOINT, UPLOAD_ENDPOINT, TYPE_ENDPOINT
+from mockaroo.api.client import Client
+from mockaroo.api.exceptions import InvalidApiKeyError, UsageLimitExceededError
+from mockaroo.api.constants import GENERATE_ENDPOINT, UPLOAD_ENDPOINT, TYPE_ENDPOINT
 
 
 def empty_client():
-    """Create an instance of client"""
+    """Create an instance of client."""
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         return Client()
 
 
 def test_create():
-    """Test init without passing api_key"""
+    """Test init without passing api_key."""
     empty_client()
 
 
-def test_warning_for_no_api_key():
+def test_no_api_key():
     with patch.dict(os.environ, {}, clear=True), warnings.catch_warnings(
         record=True
     ) as w:  # Clearing all env vars
@@ -36,7 +38,6 @@ def test_warning_for_no_api_key():
 
 
 def test_create_attributes():
-    """Test init with attributes"""
     client = Client(api_key="test_key", host="test_host", secure=False, port=80)
     assert client._api_key == "test_key"
     assert client.host == "test_host"
@@ -72,13 +73,13 @@ def test_types():
     client = empty_client()
     with patch("requests.request") as mock_request:
         mock_response = Mock()
-        mock_response.json.return_value = {"type": "Integer"}
+        mock_response.json.return_value = {"types": [{"type": "Integer"}]}
         mock_response.status_code = 200
         mock_request.return_value = mock_response
 
         result = client.types()
 
-        assert result == {"type": "Integer"}
+        assert result == [{"type": "Integer"}]
 
 
 def test_upload():
@@ -120,7 +121,7 @@ def test_default_generate_with_schema():
         assert result == [{"mock_key": "mock_value"}]
 
 
-def test_generate_fmt_csv():
+def test_generate_format_csv():
     client = empty_client()
     with patch("requests.request") as mock_request:
         mock_response = Mock()
@@ -133,7 +134,8 @@ def test_generate_fmt_csv():
         assert result == b"id,col_header1,col_header2\n1,row_value1,row_value2\n"
 
 
-def test_generate_fmt_txt():
+def test_generate_format_txt():
+    """Test generate for txt format."""
     client = empty_client()
     with patch("requests.request") as mock_request:
         mock_response = Mock()
@@ -147,6 +149,57 @@ def test_generate_fmt_txt():
 
         assert result == b"id\tcol_header1\tlcol_header2\n1\trow_value1\trow_value2\n"
 
+def test_schema_and_fields_argument_warning():
+    """Test raise `UserWarning`when both `schema` and `fields` parameters are given.
+
+    The purpose of this test is to verify that a warning is generated when a user 
+    specifies both schema and fields. The schema parameter takes precedence, meaning 
+    any fields specified will be ignored. The warning informs the user of this behavior 
+    to avoid confusion.
+
+    Example case:
+
+        - If the `schema` is set to "Person", and
+        - The user also specifies `fields` as [{"name", "id", "type", "Row Number"}],
+        
+        The test should confirm that a UserWarning is issued, and the generated data 
+        will only follow the "Person" schema, ignoring the custom fields.
+
+    """
+    client = empty_client()
+    with patch("requests.request") as mock_request, warnings.catch_warnings(
+        record=True
+    ) as w:
+        mock_response = Mock()
+        mock_response.json.return_value = [{
+            "first_name": "Jane", 
+            "last_name": "Doe"
+        }]
+        mock_response.status_code = 200
+        mock_request.return_value = mock_response
+
+        result = client.generate(
+            schema="Person", 
+            fields=[
+                {
+                    "name": "id", 
+                    "type": "Row Number"
+                }
+            ]
+        )
+        assert result == [{
+            "first_name": "Jane", 
+            "last_name": "Doe"
+        }]
+        assert len(w) == 1
+        assert issubclass(w[-1].category, UserWarning)
+        assert (
+            "You should specify either 'schema' or 'fields', "\
+            "but not both. `schema` will override any values passed"\
+            "to `fields`."
+            == str(w[-1].message)
+        )
+    
 
 @pytest.mark.parametrize(
     "endpoint, params, expected_url",
@@ -179,6 +232,7 @@ def test_generate_fmt_txt():
     ],
 )
 def test_get_url(endpoint, expected_url, params):
+    """Test URL construction."""
     client = Client(api_key="api_key")
     url = client._get_url(endpoint, **params)
     assert url == expected_url
