@@ -23,6 +23,7 @@ keywords = ["api", "mock-data", "python"]
 dependencies = [
     "requests",
     "python-dotenv",
+    "rich-click",
 ]
 
 requires-python = ">=3.8"
@@ -33,12 +34,29 @@ test = [
     "pytest",
 ]
 dev = [
-    "black",
+    "ruff",
     "mypy"
 ]
 
 [project.urls]
 Home = "https://github.com/Scarvy/mockaroo-python"
 
+[tool.flit.sdist]
+exclude = [
+    "tests/samples/",
+    "images/"
+]
+
 [tool.flit.module]
 name = "mockaroo"
+
+[tool.ruff]
+select = [
+  "E",   # pycodestyle
+  "F",   # pyflakes
+  "UP",  # pyupgrade
+  "D",   # pydocstyle
+]
+
+[tool.ruff.pydocstyle]
+convention = "google"
