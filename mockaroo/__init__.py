@@ -3,4 +3,4 @@ from .api.client import Client
 from .api.exceptions import MockarooError, InvalidApiKeyError, UsageLimitExceededError
 
 __all__ = ["Client", "MockarooError", "InvalidApiKeyError", "UsageLimitExceededError"]
-__version__ = "1.1.0"
+__version__ = "2.0.0"
