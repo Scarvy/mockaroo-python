@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.0.0] - 2023-10-17
+
+### New
+
+- ✨ New CLI using 🌈 `rich-click` to easily execute Mockaroo API commands in the terminal:
+  - `types` - See list of Mockaroo data types in a `rich` styled table
+  - `upload` and `delete` - datasets from Mockaroo 🦘
+
+### Added
+
+- Additional unit tests for increase code coverage to ~98% 💪
+
+### Changed
+
+- Switch linter to `ruff`
+
+### Fixed
+
+- Fix `types` method "Returns" docstring
+- Fix `types` method unit test
+
 ## [1.1.0] - 2023-10-15
 
 ### Added
