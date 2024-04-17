@@ -9,7 +9,6 @@ packages = [
     {include = "mockaroo"}
 ]
 
-
 [tool.poetry.dependencies]
 python = "^3.8"
 requests = "^2.31.0"
