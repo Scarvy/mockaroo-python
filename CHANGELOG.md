@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.0.0] - 2024-04-16
+
+## Breaking Change
+
+- Renamed API variable from `API_KEY` to `MOCKAROO_API_KEY`
+
+## Changed
+
+- Using `poetry` for package management
+- Shortened `click` command `generate` to `gen`
+
+## Fixed
+
+- Can now generate `xml` and `sql` mock data. Discussion [here](https://forum.mockaroo.com/t/issue-mockaroo-api-post-generate-format-sql-and-xml/7547?u=scarvy)
+- Issue with POST request in `upload` method sending weird data with file. Pointed out in the community [form](https://forum.mockaroo.com/t/mockaroo-data-set-upload-api-problem/7749/2?u=scarvy) 🙏
+
 ## [2.0.0] - 2023-10-17
 
 ### New

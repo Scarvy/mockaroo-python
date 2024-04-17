@@ -27,11 +27,12 @@ def table_layout(data_types: List[Dict[str, Any]]) -> None:
         if params:
             result = []
             for count, param in enumerate(params, start=1):
-                formatted_str = \
-                    f"{count}.) [#90caf9]Name[/#90caf9]: {param['name']}"\
-                    "[#90caf9]Type[/#90caf9]: {param['type']} "\
-                    "[#90caf9]Description[/#90caf9]: '{param['description']}' "\
+                formatted_str = (
+                    f"{count}.) [#90caf9]Name[/#90caf9]: {param['name']}"
+                    "[#90caf9]Type[/#90caf9]: {param['type']} "
+                    "[#90caf9]Description[/#90caf9]: '{param['description']}' "
                     "[#90caf9]Default[/#90caf9]: {param['default']}\n"
+                )
                 result.append(formatted_str)
 
             result_str = "\n".join(result)

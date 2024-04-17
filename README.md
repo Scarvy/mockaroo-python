@@ -1,50 +1,99 @@
-# Mockaroo API Python Library 🐍 + 🦘
+# mockaroo-python
 
-A Python library for the [Mockaroo APIs](https://mockaroo.com/docs). Use this library to generate mock data for testing, simulations, and more.
+[![PyPI](https://img.shields.io/pypi/v/mockaroo-python.svg)](https://pypi.org/project/mockaroo-python/)
+[![Changelog](https://img.shields.io/github/v/release/Scarvy/mockaroo-python?include_prereleases&label=changelog)](https://github.com/Scarvy/mockaroo-python/releases)
+
+A Python wrapper for the Mockaroo API 🦘 + 🐍.
 
 ## Installation
 
-**Install from PyPl**:
+Install this tool using `pip`:
 
-```bash
-pip install mockaroo-python
-```
-
-**Install from the GitHub Repository**:
-
-```bash
-pip install git+https://github.com/Scarvy/mockaroo-python.git
-```
-
-**Install from Local Source**:
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/Scarvy/mockaroo-python.git
-```
-
-2. Navigate to the cloned directory:
-
-```bash
-cd mockaroo-python
-```
-
-3. Install the package:
-
-```bash
-pip install .
-```
+    pip install mockaroo-python
 
 ## Prerequisites
 
-To use this library, you'll need an API key from [Mockaroo website](www.mockaroo.com).
+To use this library, you'll need an API key from the [Mockaroo website](https://www.mockaroo.com/docs#Gaining_Access).
+
+Set your key as an environment variable:
+
+```bash
+export MOCKAROO_API_KEY=<api_key>
+```
+
+or pass it to the `Client` class as an argument:
+
+```python
+client = Client(api_key="api_key")
+```
 
 ## Usage
 
-Use the library in your script or in the command-line.
+Use the library in your Python script or from the command-line.
 
-**Python Script:**
+**Command-Line**:
+
+For help, run:
+
+```bash
+mockaroo --help
+```
+
+You can also use:
+
+```bash
+python -m mockaroo --help
+```
+
+Generate a dataset:
+
+```bash
+mockaroo gen Person # your own schema in Mockaroo
+
+[
+    {
+        "id": 1,
+        "first_name": "Burch",
+        "last_name": "Minichi"
+    },
+    {
+        "id": 2,
+        "first_name": "Val",
+        "last_name": "Curzon"
+    },
+    {
+        "id": 3,
+        "first_name": "Poppy",
+        "last_name": "Pallant"
+    }
+]
+```
+
+Write data to a file format (JSON, CSV, TXT, XML, or SQL):
+
+```bash
+mockaroo gen Person --count 5 >> people.json
+```
+
+Upload a file to Mockaroo:
+
+```bash
+mockaroo upload customers customers.csv
+```
+
+Delete a file:
+
+```bash
+mockaroo delete customers
+```
+
+Check the available Mockaroo types:
+
+```bash
+mockaroo types
+```
+
+**Python Script**:
 
 ```python
 from mockaroo import Client
@@ -75,76 +124,28 @@ data = client.generate(
 )
 ```
 
-**Command-Line Interface:**
-
-```bash
-Usage: python -m mockaroo [OPTIONS] COMMAND [ARGS]...                               
-                                                                                     
-Interact with the Mockaroo APIs 🦘 + 🐍                                             
-                                                                                     
-╭─ Options ────────────────────────────────────────────────────────────────────────╮
-│ --help      Show this message and exit.                                          │
-╰──────────────────────────────────────────────────────────────────────────────────╯
-╭─ Commands ───────────────────────────────────────────────────────────────────────╮
-│ delete          Delete a dataset from Mockaroo                                   │
-│ types           Get Mockaroo data types                                          │
-│ upload          Upload dataset to Mockaroo                                       │
-╰──────────────────────────────────────────────────────────────────────────────────╯
-```
-
-```bash
- Usage: python -m mockaroo types [OPTIONS]                                                           
-                                                                                                     
- Get Mockaroo data types                                                                             
-                                                                                                     
-╭─ Options ─────────────────────────────────────────────────────────────────────────╮
-│ --pager  -P    Page output.                                                       │
-│ --help         Show this message and exit.                                        │
-╰───────────────────────────────────────────────────────────────────────────────────╯
-```
-
-```bash
- Usage: python -m mockaroo upload [OPTIONS] NAME INPUT_FILE                                   
-                                                                                              
- Upload dataset to Mockaroo                                                                   
-                                                                                              
-╭─ Options ────────────────────────────────────────────────────────────────────────╮
-│ *  NAME          TEXT  [required]                                                │
-│ *  INPUT_FILE    PATH  [required]                                                │
-│    --help              Show this message and exit.                               │
-╰──────────────────────────────────────────────────────────────────────────────────╯
-```
-
-```bash
- Usage: python -m mockaroo delete [OPTIONS] NAME                                                 
-                                                                                                 
- Delete a dataset from Mockaroo                                                                  
-                                                                                                 
-╭─ Options ────────────────────────────────────────────────────────────────────────╮
-│ *  NAME      TEXT  [required]                                                    │
-│    --help          Show this message and exit.                                   │
-╰──────────────────────────────────────────────────────────────────────────────────╯
-```
-
-## Generate Dataset
+## Ways to Generate Mockaroo Datasets
 
 ### Using Predefined Schemas
 
-To generate data based on a schema you've created on Mockaroo's website, specify the schema name as an argument.
+To generate data based on a schema you've created, specify the schema name as an argument.
 
 **Example:**
 
 ```python
 from mockaroo import Client
+
 client = Client()
+
 data = client.generate(schema="Person")
+
 print(data)
 {'id': 1, 'first_name': 'Patrizius', 'last_name': 'Van'}
 ```
 
 ### Using Custom Fields
 
-Pass a list of field definitions to generate data with custom fields. For a full list of available types, see the, see [API Reference](https://www.mockaroo.com/docs#Types).
+Pass a list of field definitions to generate mock data with custom fields. For a full list of available types, see the [Official API Reference Page](https://www.mockaroo.com/docs#Types).
 
 **Example**:
 
@@ -167,6 +168,17 @@ print(result)
 [{'id': 1, 'transactionType': 'credit'}, {'id': 2, 'transactionType': 'debit'}]
 ```
 
-### Mockaroo Types
+## Development
 
-![table_layout](/images/table_layout.svg)
+To contribute to this tool, first checkout the code. Then create a new virtual environment:
+
+    cd mockaroo-python
+    poetry install
+
+Now install the dependencies and test dependencies:
+
+    pip install -e '.[test]'
+
+To run the tests:
+
+    pytest

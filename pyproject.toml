@@ -1,62 +1,30 @@
-[build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
-
-[project]
+[tool.poetry]
 name = "mockaroo-python"
-description = "A Python Library for interacting with Mockaroo APIs 🐍 + 🦘"
-authors = [{name = "Scott Carvalho", email = "scottcarvalho71@gmail.com"}]
+version = "3.0.0"
+description = "A Python wrapper for the Mockaroo API"
+authors = ["Scott Carvalho <scottcarvalho71@gmail.com>"]
+license = "MIT"
 readme = "README.md"
-license = {file = "LICENSE"}
-classifiers = [
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3 :: Only",
-    ]
-dynamic = ["version"]
-keywords = ["api", "mock-data", "python"]
-
-dependencies = [
-    "requests",
-    "python-dotenv",
-    "rich-click",
+packages = [
+    {include = "mockaroo"}
 ]
 
-requires-python = ">=3.8"
 
-[project.optional-dependencies]
-test = [
-    "pre-commit",
-    "pytest",
-]
-dev = [
-    "ruff",
-    "mypy"
-]
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.31.0"
+python-dotenv = "^1.0.1"
+click = "^8.1.7"
+rich = "^13.7.1"
+rich-click = "^1.7.4"
 
-[project.urls]
-Home = "https://github.com/Scarvy/mockaroo-python"
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.1.1"
+ruff = "^0.3.7"
 
-[tool.flit.sdist]
-exclude = [
-    "tests/samples/",
-    "images/"
-]
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
-[tool.flit.module]
-name = "mockaroo"
-
-[tool.ruff]
-select = [
-  "E",   # pycodestyle
-  "F",   # pyflakes
-  "UP",  # pyupgrade
-  "D",   # pydocstyle
-]
-
-[tool.ruff.pydocstyle]
-convention = "google"
+[tool.poetry.scripts]
+mockaroo = 'mockaroo.cli:cli'

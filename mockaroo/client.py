@@ -1,23 +1,17 @@
 """Provides code to interact with the Mockaroo API."""
-import warnings
+
 import os
-from typing import Any, Dict, List, Optional, Union, ByteString
-from urllib.parse import urlencode, quote
+import warnings
+from typing import Any, ByteString, Dict, List, Optional, Union
+from urllib.parse import quote, urlencode
 
 import requests
 from dotenv import load_dotenv
+from requests.exceptions import RequestException
 
-from .constants import (
-    TYPE_ENDPOINT,
-    UPLOAD_ENDPOINT,
-    GENERATE_ENDPOINT,
-    HTTP_GET,
-    HTTP_POST,
-    HTTP_DELETE,
-)
 from .exceptions import (
-    MockarooError,
     InvalidApiKeyError,
+    MockarooError,
     UsageLimitExceededError,
 )
 
@@ -28,12 +22,21 @@ class Client:
     """Client for interacting with the Mockaroo API.
 
     Attributes:
-        api_key (Optional[str]): API key for Mockaroo API.
+        api_key (Optional[str]): API key for the Mockaroo API.
         host (str): Hostname of the API. Default: api.mockaroo.com
         secure (bool): Whether to use HTTPS. Default: True
         port (Optional[int]): Port number to connect to. Default: None.
 
     """
+
+    TYPE_ENDPOINT = "/api/types/"
+    UPLOAD_ENDPOINT = "/api/datasets/"
+    GENERATE_ENDPOINT = "/api/generate"
+
+    HTTP_GET = "GET"
+    HTTP_POST = "POST"
+    HTTP_DELETE = "DELETE"
+
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -60,11 +63,11 @@ class Client:
     def api_key(self):
         """Set API key."""
         if not self._api_key:
-            self._api_key = os.environ.get("API_KEY")
+            self._api_key = os.environ.get("MOCKAROO_API_KEY")
             if not self._api_key:
                 warnings.warn(
-                    "API key is not provided. " \
-                    "Set API_KEY `export API_KEY=your_api_key`."
+                    "API key is not provided. "
+                    "Set MOCKAROO_API_KEY `export MOCKAROO_API_KEY=your_api_key`."
                 )
         return self._api_key
 
@@ -89,16 +92,17 @@ class Client:
         """Validate that each field has 'name' and 'type' keys.
 
         Args:
-            fields (List[Dict[str, Any]]): 
-            A list of dictionaries representing the fields for data generation.
+            fields (List[Dict[str, Any]]): A list of dictionaries
+            representing the fields for data generation.
 
         Raises:
             ValueError: If any dictionary lacks a 'name' or 'type' key.
         """
-        if not all("name" in field and "type" in field for field in fields):
-            raise ValueError("Each field must have a 'name' and 'type'")
+        for idx, field in enumerate(fields):
+            if not all(k in field for k in ["name", "type"]):
+                raise ValueError(f"Field at index {idx} must have a 'name' and 'type'")
 
-    def _get_url( # noqa: D417
+    def _get_url(  # noqa: D417
         self,
         endpoint: str,
         **params,
@@ -143,6 +147,22 @@ class Client:
         return f"{base_url}{endpoint}?{urlencode(params)}"
 
     def _http_request(self, method: str, url: str, **kwargs) -> requests.Response:
+        """Perform an HTTP request and return a requests.Response object.
+
+        Args:
+            method (str): The HTTP method to use (e.g., 'GET', 'POST').
+            url (str): The URL to which the request is sent.
+            **kwargs: Additional keyword arguments to pass to `requests.request`.
+
+        Returns:
+            requests.Response: The response object containing details of the HTTP response.
+
+        Raises:
+            Exception: If the HTTP request fails for any reason or if the status code is not 200.
+
+        Side Effects:
+            Updates the `last_request` instance variable with details about the request and its outcome.
+        """  # noqa: E501
         self.last_request = {
             "method": method,
             "url": url,
@@ -152,7 +172,7 @@ class Client:
         try:
             resp = requests.request(method, url, **kwargs)
             self.last_request["response"] = resp.text
-        except Exception as e:
+        except RequestException as e:
             self.last_request["error"] = str(e)
             raise
 
@@ -166,8 +186,8 @@ class Client:
         Returns:
             dict: A list of dictionaries containing types supported by Mockaroo.
         """
-        url = self._get_url(TYPE_ENDPOINT)
-        json_resp = self._http_request(HTTP_GET, url=url).json()
+        url = self._get_url(self.TYPE_ENDPOINT)
+        json_resp = self._http_request(self.HTTP_GET, url=url).json()
         return json_resp["types"]
 
     def upload(self, name: str, path: str) -> Dict[str, Any]:
@@ -180,14 +200,14 @@ class Client:
         Returns:
             dict: Dictionary containing upload status and other metadata.
         """
-        url = self._get_url(UPLOAD_ENDPOINT, name=name)
+        url = self._get_url(self.UPLOAD_ENDPOINT, name=name)
         with open(path, "rb") as f:
-            files = {"file": f}
+            file_content = f.read()
             return self._http_request(
-                HTTP_POST,
+                self.HTTP_POST,
                 url=url,
-                files=files,
                 headers={"content-type": "text/csv"},
+                data=file_content,
             ).json()
 
     def delete(self, name: str) -> Dict[str, Any]:
@@ -199,8 +219,8 @@ class Client:
         Returns:
             dict: Dictionary containing delete status and other metadata.
         """
-        url = self._get_url(UPLOAD_ENDPOINT, name=name)
-        return self._http_request(HTTP_DELETE, url=url).json()
+        url = self._get_url(self.UPLOAD_ENDPOINT, name=name)
+        return self._http_request(self.HTTP_DELETE, url=url).json()
 
     def generate(  # noqa: D417
         self,
@@ -253,10 +273,10 @@ class Client:
                 )
             >>> data
             [
-                {'id': 1, 'transactionType': 'credit'}, 
+                {'id': 1, 'transactionType': 'credit'},
                 {'id': 2, 'transactionType': 'debit'}
             ]
-        """ # noqa: E501
+        """  # noqa: E501
         schema = kwargs.get("schema")
         fields = kwargs.get("fields")
 
@@ -264,8 +284,8 @@ class Client:
             schema is not None and fields is not None
         ):
             warnings.warn(
-                "You should specify either 'schema' or 'fields', "\
-                "but not both. `schema` will override any values passed"\
+                "You should specify either 'schema' or 'fields', "
+                "but not both. `schema` will override any values passed"
                 "to `fields`."
             )
 
@@ -274,8 +294,8 @@ class Client:
 
         fields = kwargs.pop("fields", None)  # Remove fields from keyword args
 
-        url = self._get_url(GENERATE_ENDPOINT, **kwargs)
-        response = self._http_request(HTTP_POST, url=url, json=fields)
+        url = self._get_url(self.GENERATE_ENDPOINT, **kwargs)
+        response = self._http_request(self.HTTP_POST, url=url, json=fields)
 
         return (
             response.json() if kwargs.get("fmt", "json") == "json" else response.content
