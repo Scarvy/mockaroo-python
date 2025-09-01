@@ -2,15 +2,14 @@
 
 [![PyPI](https://img.shields.io/pypi/v/mockaroo-python.svg)](https://pypi.org/project/mockaroo-python/)
 [![Changelog](https://img.shields.io/github/v/release/Scarvy/mockaroo-python?include_prereleases&label=changelog)](https://github.com/Scarvy/mockaroo-python/releases)
-[![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
 
 A Python wrapper for the Mockaroo API 🦘 + 🐍.
 
 ## Installation
 
-Install this tool using `pip`:
+Install this tool using `uv`:
 
-    pip install mockaroo-python
+    uv add mockaroo-python
 
 ## Prerequisites
 
@@ -174,12 +173,8 @@ print(result)
 To contribute to this tool, first checkout the code. Then create a new virtual environment:
 
     cd mockaroo-python
-    poetry install
-
-Now install the dependencies and test dependencies:
-
-    poetry install --with dev
+    uv sync --dev
 
 To run the tests:
 
-    pytest
+    uv run pytest
