@@ -1,29 +1,31 @@
-[tool.poetry]
+[project]
 name = "mockaroo-python"
 version = "3.0.0"
 description = "A Python wrapper for the Mockaroo API"
-authors = ["Scott Carvalho <scottcarvalho71@gmail.com>"]
-license = "MIT"
+authors = [{ name = "Scott Carvalho", email = "scottcarvalho71@gmail.com" }]
+requires-python = ">=3.9"
 readme = "README.md"
-packages = [
-    {include = "mockaroo"}
+license = "MIT"
+dependencies = [
+    "requests",
+    "python-dotenv",
+    "click",
+    "rich",
+    "rich-click",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-requests = "^2.31.0"
-python-dotenv = "^1.0.1"
-click = "^8.1.7"
-rich = "^13.7.1"
-rich-click = "^1.7.4"
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff>=0.12.11",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.1.1"
-ruff = "^0.3.7"
+[tool.uv.build-backend]
+module-name = "mockaroo"
+
+[project.scripts]
+mockaroo = "mockaroo.cli:cli"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.scripts]
-mockaroo = 'mockaroo.cli:cli'
+requires = ["uv_build>=0.8.14,<0.9.0"]
+build-backend = "uv_build"
